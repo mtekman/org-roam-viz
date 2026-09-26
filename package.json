@@ -11,7 +11,9 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "force-graph": "^1.52.0",
+    "sexpression": "^0.0.5",
     "vis-network": "^9.1.9"
   }
 }
