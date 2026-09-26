@@ -20,8 +20,23 @@ export default class TagColors {
     const newL = Math.max(0, Math.min(100, parseInt(l, 10) + percent));
     return `hsl(${h}, ${s}%, ${newL}%)`;
   }
+  
+  private static generateTagsFromNodes(nodesArray) {
+    // Start// Derive unique tag groups from nodesArray
+    const tagSet = new Set();
+    for (const node of nodesArray) {
+      const g = node.group; // e.g. 'tag:@foo' or 'default'
+      if (g && g !== 'default') {
+        // strip 'tag:' prefix if you used it
+        const tag = g.startsWith('tag:') ? g.slice(4) : g;
+        tagSet.add(tag);
+      }
+    }
+    return(Array.from(tagSet))
+  }
 
-  public static makeGroupColors(tags) : Groups {
+  public static makeGroupColors(nodesArray) : Groups {
+    const tags = TagColors.generateTagsFromNodes(nodesArray);
     const colors = TagColors.generateDistinctColors(tags.length);
     const groups = {
       default: {
