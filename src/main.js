@@ -1,203 +1,8 @@
 import { Network, DataSet } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
-//import NodeHelper from 'node_helper.ts';
+
 import Json2Graph from './json2graph.ts';
-
-
-function buildTagLegend(nodesDS, legendContainerId) {
-  const legendItemsEl = document.getElementById('legend-items');
-  if (!legendItemsEl) return;
-
-  // Collect all unique tags and their frequencies
-  const tagCounts = new Map();
-  let untaggedCount = 0;
-
-  for (const node of nodesDS.get()) {
-    const tags = node.nodeTags || [];
-    if (tags.length === 0) {
-      untaggedCount++;
-    } else {
-      for (const t of tags) {
-        tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
-      }
-    }
-  }
-
-  const allTags = Array.from(tagCounts.keys()).sort();
-
-  // State: which tags are currently enabled
-  const enabledTags = new Set(allTags); // real tags
-  let untaggedEnabled = true;           // special “untagged” toggle
-
-  function applyTagFilter() {
-    const updates = [];
-
-    for (const node of nodesDS.get()) {
-      const tags = node.nodeTags || [];
-
-      let visible;
-      if (tags.length === 0) {
-        // Node has no tags: visible iff “untagged” is enabled
-        visible = untaggedEnabled;
-      } else {
-        // Node has tags: visible if it has at least one enabled tag
-        visible = tags.some(t => enabledTags.has(t));
-      }
-
-      const hidden = !visible;
-      if (node.hidden !== hidden) {
-        updates.push({ id: node.id, hidden });
-      }
-    }
-
-    if (updates.length > 0) {
-      nodesDS.update(updates);
-    }
-  }
-
-  // --- Select all / Deselect all controls ---
-
-  const controlsRow = document.createElement('div');
-  controlsRow.style.marginBottom = '8px';
-
-  const selectAllCheckbox = document.createElement('input');
-  selectAllCheckbox.type = 'checkbox';
-  selectAllCheckbox.id = 'tag-select-all';
-  selectAllCheckbox.checked = true;
-
-  const selectAllLabel = document.createElement('label');
-  selectAllLabel.htmlFor = selectAllCheckbox.id;
-  selectAllLabel.textContent = 'Select all';
-  selectAllLabel.style.marginLeft = '4px';
-  selectAllLabel.style.cursor = 'pointer';
-
-  const deselectAllCheckbox = document.createElement('input');
-  deselectAllCheckbox.type = 'checkbox';
-  deselectAllCheckbox.id = 'tag-deselect-all';
-  deselectAllCheckbox.checked = false;
-
-  const deselectAllLabel = document.createElement('label');
-  deselectAllLabel.htmlFor = deselectAllCheckbox.id;
-  deselectAllLabel.textContent = 'Deselect all';
-  deselectAllLabel.style.marginLeft = '8px';
-  deselectAllLabel.style.cursor = 'pointer';
-
-  function syncSelectAllState() {
-    const allRealTagsSelected =
-      allTags.length > 0 && allTags.every(t => enabledTags.has(t));
-    const noRealTagsSelected =
-      allTags.length === 0 || allTags.every(t => !enabledTags.has(t));
-
-    selectAllCheckbox.checked = allRealTagsSelected && untaggedEnabled;
-    deselectAllCheckbox.checked =
-      noRealTagsSelected && !untaggedEnabled;
-  }
-
-  selectAllCheckbox.addEventListener('change', () => {
-    if (selectAllCheckbox.checked) {
-      for (const t of allTags) enabledTags.add(t);
-      untaggedEnabled = true;
-      deselectAllCheckbox.checked = false;
-
-      for (const t of allTags) {
-        const cb = document.getElementById(`tag-${t}`);
-        if (cb) cb.checked = true;
-      }
-      const untaggedCb = document.getElementById('tag-__untagged__');
-      if (untaggedCb) untaggedCb.checked = true;
-
-      applyTagFilter();
-    }
-  });
-
-  deselectAllCheckbox.addEventListener('change', () => {
-    if (deselectAllCheckbox.checked) {
-      enabledTags.clear();
-      untaggedEnabled = false;
-      selectAllCheckbox.checked = false;
-
-      for (const t of allTags) {
-        const cb = document.getElementById(`tag-${t}`);
-        if (cb) cb.checked = false;
-      }
-      const untaggedCb = document.getElementById('tag-__untagged__');
-      if (untaggedCb) untaggedCb.checked = false;
-
-      applyTagFilter();
-    }
-  });
-
-  controlsRow.appendChild(selectAllCheckbox);
-  controlsRow.appendChild(selectAllLabel);
-  controlsRow.appendChild(deselectAllCheckbox);
-  controlsRow.appendChild(deselectAllLabel);
-  legendItemsEl.appendChild(controlsRow);
-
-  // --- Individual tag checkboxes ---
-
-  for (const tag of allTags) {
-    const count = tagCounts.get(tag) || 0;
-
-    const row = document.createElement('div');
-    row.style.marginBottom = '4px';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = `tag-${tag}`;
-    checkbox.checked = true;
-
-    checkbox.addEventListener('change', () => {
-      if (checkbox.checked) {
-        enabledTags.add(tag);
-      } else {
-        enabledTags.delete(tag);
-      }
-      syncSelectAllState();
-      applyTagFilter();
-    });
-
-    const label = document.createElement('label');
-    label.htmlFor = checkbox.id;
-    label.textContent = `${tag} (${count})`;
-    label.style.marginLeft = '4px';
-    label.style.cursor = 'pointer';
-
-    row.appendChild(checkbox);
-    row.appendChild(label);
-    legendItemsEl.appendChild(row);
-  }
-
-  // --- “Untagged” checkbox ---
-
-  if (untaggedCount > 0) {
-    const row = document.createElement('div');
-    row.style.marginBottom = '4px';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = 'tag-__untagged__';
-    checkbox.checked = true;
-
-    checkbox.addEventListener('change', () => {
-      untaggedEnabled = checkbox.checked;
-      syncSelectAllState();
-      applyTagFilter();
-    });
-
-    const label = document.createElement('label');
-    label.htmlFor = checkbox.id;
-    label.textContent = `untagged (${untaggedCount})`;
-    label.style.marginLeft = '4px';
-    label.style.cursor = 'pointer';
-
-    row.appendChild(checkbox);
-    row.appendChild(label);
-    legendItemsEl.appendChild(row);
-  }
-
-  syncSelectAllState();
-}
-
+import TagLegend from './tag_legend.ts';
 
 
 async function loadJson(path) {
@@ -299,6 +104,8 @@ async function initNetwork() {
         }
     };
 
+    // TODO: Remove double declaration of coloured tags..
+    const tagColorMap = new Map() //<string, { background: string; border: string }>();
     tags.forEach((tag, i) => {
         const baseColor = colors[i]; // hsl(...)
         groups[`tag:${tag}`] = {
@@ -307,8 +114,11 @@ async function initNetwork() {
                 border: adjustColorBrightness(baseColor, -20) // slightly darker border
             }
         };
+        tagColorMap.set(tag, {
+            background: baseColor,
+            border: adjustColorBrightness(baseColor, -20)
+        });      
     });
-    //END
     
     const container = document.getElementById('mynetwork');
 
@@ -372,7 +182,7 @@ async function initNetwork() {
     };
 
     const network = new Network(container, data, options);
-    buildTagLegend(nodes, 'legend-items');
+    TagLegend.init(nodes, 'legend-items', tagColorMap);
     // Counter to generate unique IDs for new nodes/edges
     network.on('click', (params) => {
         if (!params.nodes || params.nodes.length === 0) return;
