@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "runner": "node src/database.ts ~/repos/_mtekman/org-projects/brain/org-roam.db; vite",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
