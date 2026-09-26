@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import sexp from 'sexpression';
+import { writeFileSync } from 'node:fs';
 
 export interface NodeData {
   id: string;
@@ -21,7 +22,7 @@ export interface ProbeResult {
   edge_data: EdgeData[];
 }
 
-export class SqliteProbe {
+export default class SqliteProbe {
   /**
    * Probes a better-sqlite3 database and extracts node and edge data.
    * @param dbPath - Path to the SQLite database file.
@@ -74,11 +75,12 @@ export class SqliteProbe {
           heading: (res['ITEM'] as string) || null,
           tags,
         };
-      });
+    });
 
+    //console.log(node_data.length)
     db.close();
 
-    return { node_data, edge_data };
+    return { nodes : node_data, edges : edge_data };
   }
 }
 
@@ -89,4 +91,5 @@ if (!dbPath) {
   process.exit(1);
 }
 const info = SqliteProbe.probeDatabase(dbPath);
-console.log(JSON.stringify(info, null, 2));
+writeFileSync('./public/nodes.json', JSON.stringify(info.nodes, null, 2), 'utf8');
+writeFileSync('./public/edges.json', JSON.stringify(info.edges, null, 2), 'utf8');

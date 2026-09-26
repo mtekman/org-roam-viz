@@ -15,9 +15,6 @@ export default class Json2Graph {
     return rawEdges.map((e, idx) => {
       const type = e.type || 'UNKNOWN';
       const baseColor = EDGE_TYPE_COLORS[type] || '#848484';
-      if (e.outline){
-        e.outline = e.outline.join(",");
-      }
       const hidden = !(type==="id" || type==="file")
       const edge = {
         // Always unique, so duplicates are allowed
@@ -37,17 +34,13 @@ export default class Json2Graph {
 
   public static mapNodes(rawNodes) {
     return rawNodes.map(n => {
-      const tags = n.tags || {};
-      const areaTags = tags.area || [];
-      const generalTags = tags.general || [];
-      const allTags = [...areaTags, ...generalTags];
+      const tags = n.tags || [];
+      const allTags = [...tags];
 
       // Simple grouping: use first area tag or first general tag as group
       let group = 'default';
-      if (areaTags.length > 0) {
-        group = `area:${areaTags[0]}`;
-      } else if (generalTags.length > 0) {
-        group = `general:${generalTags[0]}`;
+      if (allTags.length > 0) {
+        group = tags[0];
       }
 
       return {
@@ -67,11 +60,8 @@ export default class Json2Graph {
     const tagCounts = new Map();
 
     for (const n of rawNodes) {
-      const tags = n.tags || {};
-      const areaTags = tags.area || [];
-      const generalTags = tags.general || [];
-      const allTags = [...areaTags, ...generalTags];
-
+      const tags = n.tags || [];
+      const allTags = [...tags];
       for (const t of allTags) {
         tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
       }
@@ -95,10 +85,7 @@ export default class Json2Graph {
     byTag.set('other', []);
 
     for (const n of rawNodes) {
-      const tags = n.tags || {};
-      const areaTags = tags.area || [];
-      const generalTags = tags.general || [];
-      const allTags = [...areaTags, ...generalTags];
+      const allTags = n.tags || [];
 
       let primary = 'other';
       for (const t of allTags) {
@@ -107,7 +94,7 @@ export default class Json2Graph {
           break;
         }
       }
-
+      
       byTag.get(primary).push({
         ...n,
         _primaryTag: primary,

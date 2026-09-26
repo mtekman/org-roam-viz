@@ -17,8 +17,8 @@ async function loadJson(path) {
 
 async function initNetwork() {
     const [rawNodes, rawEdges] = await Promise.all([
-        loadJson('/good_nodes_dedup.json'),
-        loadJson('/good_edges_dedup.json')
+        loadJson('/nodes.json'),
+        loadJson('/edges.json')
     ]);
 
     //const nodesArray = mapNodes(rawNodes);
