@@ -50,10 +50,9 @@ export default class NetworkEvents {
       NetworkEvents.extra_nodes[nd.id] = {clicked: false, data: new_nds}
       if (new_nds.length > 0){
         nd.label = String(new_nds.length);
-        nd.size = 20 + (5 * Math.log(new_nds.length));
+        nd.size = 20 + (10 * Math.log(new_nds.length));
       }
     }
-
   }
 
   public static expandSingleNodes(graph_data, network, nodes) {

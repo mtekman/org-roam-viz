@@ -93,3 +93,4 @@ if (!dbPath) {
 const info = SqliteProbe.probeDatabase(dbPath);
 writeFileSync('./public/nodes.json', JSON.stringify(info.nodes, null, 2), 'utf8');
 writeFileSync('./public/edges.json', JSON.stringify(info.edges, null, 2), 'utf8');
+console.log(`Wrote ${info.nodes.length} nodes to ./public/nodes.json, and ${info.edges.length} edges to ./public/edges.json`)

@@ -242,15 +242,14 @@ export class TagLegendUI {
       const label = document.createElement('label');
       label.htmlFor = checkbox.id;
       label.textContent = `${tag} (${count})`;
-      label.style.marginLeft = '4px';
+      label.style.marginLeft = '2px';
       label.style.cursor = 'pointer';
 
       // Apply color from groups if present
       if (group?.color?.background) {
         label.style.color = group.color.background;
-        label.style.fontWeight = '600';
+        label.style.fontWeight = '100';
       }
-
       row.appendChild(checkbox);
       row.appendChild(label);
       container.appendChild(row);

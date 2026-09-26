@@ -5,7 +5,7 @@ export const network_options = {
     size: 20,
     font: { size: 14, color: '#000' },
     borderWidth: 2,
-    shadow: true
+    shadow: false
   },
   edges: {
     width: 2,
@@ -17,9 +17,9 @@ export const network_options = {
       strokeWidth: 0,
       color: '#333'
     },
-    shadow: true
+    shadow: false
   },
-  // groups should be added here,
+  // groups should be dynamically inserted here later
   physics: {
     enabled: true,
     barnesHut: {
@@ -27,7 +27,7 @@ export const network_options = {
       centralGravity: 0.15,
       springLength: 120,
       springConstant: 0.04,
-      damping: 0.09
+      damping: 0.1
     },
     stabilization: {
       enabled: true,
@@ -35,12 +35,12 @@ export const network_options = {
     }
   },
   interaction: {
-    hover: true,
+    hover: false,
     tooltipDelay: 150,
     zoomView: true,
     dragNodes: true,
     dragView: true,
-    navigationButtons: true,
+    navigationButtons: false,
     keyboard: true
   }
 };

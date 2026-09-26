@@ -1,9 +1,9 @@
 
 const EDGE_TYPE_COLORS = {
-  id: '#F00',
-  file: '#F00', // 
-  https: '#0F0', //
-  http: '#0F0', //
+  id: '#000', // white
+  file: '#F00', // red
+  https: '#00F', // blue
+  http: '#00F', // blue
   UNKNOWN: '#00F'
 };
 

@@ -5,14 +5,21 @@
     <title>Vis-Network Graph</title>
     <style>
       html, body {
-        margin: 0;
-        height: 100%;
-        font-family: sans-serif;
+          margin: 0;
+          height: 100%;
+          font-family: sans-serif;
+          background-image: linear-gradient(
+              76deg,
+              #999999 16%, #989898 16%, #a9a9a9 33%,
+              #a9a9a9 33%, #a9a9a9 50%, #999999 50%,
+              #999999 66%, #989898 66%, #a9a9a9 83%,
+              #a9a9a9 83%, #a9a9a9 100%);
+          background-size: 61.84px 248.01px;        
       }
       #mynetwork {
-        width: 100%;
-        height: 100vh;
-        border: 1px solid #ccc;
+          width: 100%;
+          height: 100vh;
+          border: 1px solid #ccc;
       }
     </style>
   </head>
@@ -21,14 +28,16 @@
     <script type="module" src="/src/main.js"></script>
     <div id="legend" style="
                             position: absolute;
-                            top: 10px;
-                            right: 10px;
-                            background: rgba(255,255,255,0.9);
+                            top: 5px;
+                            right: 5px;
+                            background: rgba(200,200,200,0.5);
                             border: 1px solid #ccc;
+                            border-radius: 10px;
                             padding: 8px 10px;
                             font-family: sans-serif;
-                            font-size: 13px;
-                            max-height: 80vh;
+                            font-size: 10px;
+                            line-height: 0.2;
+                            max-height: 95%;
                             overflow-y: auto;
                             z-index: 10;
                             ">
@@ -37,6 +46,4 @@
     </div>
     <div id="mynetwork" style="width:100%;height:100vh;"></div>
   </body>
-
-  
 </html>
