@@ -1,4 +1,18 @@
 // ------------------------
+// Types
+// ------------------------
+export type GroupColor = {
+  background: string;
+  border: string;
+};
+
+export type GroupEntry = {
+  color: GroupColor;
+};
+
+export type Groups = Record<string, GroupEntry>;
+
+// ------------------------
 // State management
 // ------------------------
 export class TagLegendState {
@@ -77,7 +91,7 @@ export class TagLegendUI {
       enabledTags: Set<string>;
       untaggedEnabled: boolean;
     },
-    tagColorMap?: Map<string, { background: string; border: string }>
+    groups: Groups
   ): void {
     const legendItemsEl = document.getElementById(legendContainerId);
     if (!legendItemsEl) return;
@@ -105,7 +119,7 @@ export class TagLegendUI {
       tagCounts,
       enabledTags,
       applyTagFilter,
-      tagColorMap
+      groups
     );
 
     this.renderUntaggedCheckbox(
@@ -200,10 +214,12 @@ export class TagLegendUI {
     tagCounts: Map<string, number>,
     enabledTags: Set<string>,
     applyTagFilter: () => void,
-    tagColorMap?: Map<string, { background: string; border: string }>
+    groups: Groups
   ): void {
     for (const tag of allTags) {
       const count = tagCounts.get(tag) || 0;
+      const groupKey = `tag:${tag}`;
+      const group = groups[groupKey];
 
       const row = document.createElement('div');
       row.style.marginBottom = '4px';
@@ -229,14 +245,10 @@ export class TagLegendUI {
       label.style.marginLeft = '4px';
       label.style.cursor = 'pointer';
 
-      // Apply color if available
-      if (tagColorMap) {
-        const colorInfo = tagColorMap.get(tag);
-        if (colorInfo?.background) {
-          label.style.color = colorInfo.background;
-          // Optional: make it a bit bolder so colored text is clearer
-          label.style.fontWeight = '600';
-        }
+      // Apply color from groups if present
+      if (group?.color?.background) {
+        label.style.color = group.color.background;
+        label.style.fontWeight = '600';
       }
 
       row.appendChild(checkbox);
@@ -377,9 +389,6 @@ export class TagLegendUI {
   }
 }
 
-// ------------------------
-// Main entry point
-// ------------------------
 export default class TagLegend {
   private constructor() {}
 
@@ -387,16 +396,20 @@ export default class TagLegend {
    * Build the tag legend UI for the given container and data source.
    * Call once at initialization.
    *
-   * tagColorMap: optional map from tag -> { background, border } where
-   *   background will be used as the label text color.
+   * groups: object like:
+   * {
+   *   default: { color: { background: '#...', border: '#...' } },
+   *   'tag:cream': { color: { background: '#...', border: '#...' } },
+   *   ...
+   * }
    */
   public static init(
     nodesDS: { get: () => any[]; update: (updates: any[]) => void },
     legendContainerId: string,
-    tagColorMap?: Map<string, { background: string; border: string }>
+    groups: Groups
   ): void {
     const nodes = nodesDS.get();
     const state = TagLegendState.createFromNodes(nodes);
-    TagLegendUI.build(legendContainerId, nodesDS, state, tagColorMap);
+    TagLegendUI.build(legendContainerId, nodesDS, state, groups);
   }
 }

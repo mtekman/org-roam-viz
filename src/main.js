@@ -3,7 +3,7 @@ import 'vis-network/styles/vis-network.css';
 
 import Json2Graph from './json2graph.ts';
 import TagLegend from './tag_legend.ts';
-
+import TagColors from './tag_colors.ts';
 
 async function loadJson(path) {
     const res = await fetch(path);
@@ -54,25 +54,6 @@ function populateExtraNodesFrom(node_id, nodes, edges) {
     return(Object.values(new_nodes));
 }
 
-function generateDistinctColors(n) {
-  const colors = [];
-  for (let i = 0; i < n; i++) {
-    // Use HSL to get evenly spaced, distinct hues
-    const hue = Math.round((360 / n) * i);
-    const color = `hsl(${hue}, 70%, 60%)`;
-    colors.push(color);
-  }
-  return colors;
-}
-
-function adjustColorBrightness(hsl, percent) {
-  // hsl is like "hsl(120, 70%, 60%)"; adjust lightness
-  const match = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
-  if (!match) return hsl;
-  const [, h, s, l] = match;
-  const newL = Math.max(0, Math.min(100, parseInt(l, 10) + percent));
-  return `hsl(${h}, ${s}%, ${newL}%)`;
-}
 
 async function initNetwork() {
     const [rawNodes, rawEdges] = await Promise.all([
@@ -96,29 +77,7 @@ async function initNetwork() {
     }
 
     const tags = Array.from(tagSet);
-    const colors = generateDistinctColors(tags.length);
-
-    const groups = {
-        default: {
-            color: { background: '#d3d3d3', border: '#666666' }
-        }
-    };
-
-    // TODO: Remove double declaration of coloured tags..
-    const tagColorMap = new Map() //<string, { background: string; border: string }>();
-    tags.forEach((tag, i) => {
-        const baseColor = colors[i]; // hsl(...)
-        groups[`tag:${tag}`] = {
-            color: {
-                background: baseColor,
-                border: adjustColorBrightness(baseColor, -20) // slightly darker border
-            }
-        };
-        tagColorMap.set(tag, {
-            background: baseColor,
-            border: adjustColorBrightness(baseColor, -20)
-        });      
-    });
+    const groups = TagColors.makeGroupColors(tags);
     
     const container = document.getElementById('mynetwork');
 
@@ -182,7 +141,7 @@ async function initNetwork() {
     };
 
     const network = new Network(container, data, options);
-    TagLegend.init(nodes, 'legend-items', tagColorMap);
+    TagLegend.init(nodes, 'legend-items', groups);
     // Counter to generate unique IDs for new nodes/edges
     network.on('click', (params) => {
         if (!params.nodes || params.nodes.length === 0) return;
