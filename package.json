@@ -1,0 +1,17 @@
+{
+  "name": "my-vis-network-graph",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "force-graph": "^1.52.0",
+    "vis-network": "^9.1.9"
+  }
+}
