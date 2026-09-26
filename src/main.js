@@ -99,28 +99,40 @@ function buildTagLegend(nodesDS, legendContainerId) {
   if (!legendItemsEl) return;
 
   // Collect all unique tags and their frequencies
-  const tagCounts = new Map(); // tag -> count
+  const tagCounts = new Map();
+  let untaggedCount = 0;
 
   for (const node of nodesDS.get()) {
     const tags = node.nodeTags || [];
-    for (const t of tags) {
-      tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+    if (tags.length === 0) {
+      untaggedCount++;
+    } else {
+      for (const t of tags) {
+        tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+      }
     }
   }
 
   const allTags = Array.from(tagCounts.keys()).sort();
 
   // State: which tags are currently enabled
-  const enabledTags = new Set(allTags); // start with all enabled
+  const enabledTags = new Set(allTags); // real tags
+  let untaggedEnabled = true;           // special “untagged” toggle
 
   function applyTagFilter() {
     const updates = [];
 
     for (const node of nodesDS.get()) {
       const tags = node.nodeTags || [];
-      const visible =
-        tags.length === 0 || // nodes without tags always visible
-        tags.some(t => enabledTags.has(t));
+
+      let visible;
+      if (tags.length === 0) {
+        // Node has no tags: visible iff “untagged” is enabled
+        visible = untaggedEnabled;
+      } else {
+        // Node has tags: visible if it has at least one enabled tag
+        visible = tags.some(t => enabledTags.has(t));
+      }
 
       const hidden = !visible;
       if (node.hidden !== hidden) {
@@ -133,7 +145,86 @@ function buildTagLegend(nodesDS, legendContainerId) {
     }
   }
 
-  // Create checkboxes with frequency
+  // --- Select all / Deselect all controls ---
+
+  const controlsRow = document.createElement('div');
+  controlsRow.style.marginBottom = '8px';
+
+  const selectAllCheckbox = document.createElement('input');
+  selectAllCheckbox.type = 'checkbox';
+  selectAllCheckbox.id = 'tag-select-all';
+  selectAllCheckbox.checked = true;
+
+  const selectAllLabel = document.createElement('label');
+  selectAllLabel.htmlFor = selectAllCheckbox.id;
+  selectAllLabel.textContent = 'Select all';
+  selectAllLabel.style.marginLeft = '4px';
+  selectAllLabel.style.cursor = 'pointer';
+
+  const deselectAllCheckbox = document.createElement('input');
+  deselectAllCheckbox.type = 'checkbox';
+  deselectAllCheckbox.id = 'tag-deselect-all';
+  deselectAllCheckbox.checked = false;
+
+  const deselectAllLabel = document.createElement('label');
+  deselectAllLabel.htmlFor = deselectAllCheckbox.id;
+  deselectAllLabel.textContent = 'Deselect all';
+  deselectAllLabel.style.marginLeft = '8px';
+  deselectAllLabel.style.cursor = 'pointer';
+
+  function syncSelectAllState() {
+    const allRealTagsSelected =
+      allTags.length > 0 && allTags.every(t => enabledTags.has(t));
+    const noRealTagsSelected =
+      allTags.length === 0 || allTags.every(t => !enabledTags.has(t));
+
+    selectAllCheckbox.checked = allRealTagsSelected && untaggedEnabled;
+    deselectAllCheckbox.checked =
+      noRealTagsSelected && !untaggedEnabled;
+  }
+
+  selectAllCheckbox.addEventListener('change', () => {
+    if (selectAllCheckbox.checked) {
+      for (const t of allTags) enabledTags.add(t);
+      untaggedEnabled = true;
+      deselectAllCheckbox.checked = false;
+
+      for (const t of allTags) {
+        const cb = document.getElementById(`tag-${t}`);
+        if (cb) cb.checked = true;
+      }
+      const untaggedCb = document.getElementById('tag-__untagged__');
+      if (untaggedCb) untaggedCb.checked = true;
+
+      applyTagFilter();
+    }
+  });
+
+  deselectAllCheckbox.addEventListener('change', () => {
+    if (deselectAllCheckbox.checked) {
+      enabledTags.clear();
+      untaggedEnabled = false;
+      selectAllCheckbox.checked = false;
+
+      for (const t of allTags) {
+        const cb = document.getElementById(`tag-${t}`);
+        if (cb) cb.checked = false;
+      }
+      const untaggedCb = document.getElementById('tag-__untagged__');
+      if (untaggedCb) untaggedCb.checked = false;
+
+      applyTagFilter();
+    }
+  });
+
+  controlsRow.appendChild(selectAllCheckbox);
+  controlsRow.appendChild(selectAllLabel);
+  controlsRow.appendChild(deselectAllCheckbox);
+  controlsRow.appendChild(deselectAllLabel);
+  legendItemsEl.appendChild(controlsRow);
+
+  // --- Individual tag checkboxes ---
+
   for (const tag of allTags) {
     const count = tagCounts.get(tag) || 0;
 
@@ -151,12 +242,13 @@ function buildTagLegend(nodesDS, legendContainerId) {
       } else {
         enabledTags.delete(tag);
       }
+      syncSelectAllState();
       applyTagFilter();
     });
 
     const label = document.createElement('label');
     label.htmlFor = checkbox.id;
-    label.textContent = `${tag} (${count})`; // tag + frequency
+    label.textContent = `${tag} (${count})`;
     label.style.marginLeft = '4px';
     label.style.cursor = 'pointer';
 
@@ -164,7 +256,38 @@ function buildTagLegend(nodesDS, legendContainerId) {
     row.appendChild(label);
     legendItemsEl.appendChild(row);
   }
+
+  // --- “Untagged” checkbox ---
+
+  if (untaggedCount > 0) {
+    const row = document.createElement('div');
+    row.style.marginBottom = '4px';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'tag-__untagged__';
+    checkbox.checked = true;
+
+    checkbox.addEventListener('change', () => {
+      untaggedEnabled = checkbox.checked;
+      syncSelectAllState();
+      applyTagFilter();
+    });
+
+    const label = document.createElement('label');
+    label.htmlFor = checkbox.id;
+    label.textContent = `untagged (${untaggedCount})`;
+    label.style.marginLeft = '4px';
+    label.style.cursor = 'pointer';
+
+    row.appendChild(checkbox);
+    row.appendChild(label);
+    legendItemsEl.appendChild(row);
+  }
+
+  syncSelectAllState();
 }
+
 
 function positionNodesByTopTags(rawNodes, topN = 10) {
   // 1. Count tag frequencies
