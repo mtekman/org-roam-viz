@@ -11,14 +11,43 @@ import NodeHelper from './node_helper.ts';
 
 export default class Json2Graph {
 
-  public static mapEdges(rawEdges) {
-    return rawEdges.map((e, idx) => {
+  public static processSharedEdgeNodes(shared_edge_nodes, nodesArray){
+    const existingIds = new Set(
+      nodesArray.map(node => String(node.id))
+    );
+    
+    let edge_nodes = []
+    for (let node of shared_edge_nodes){
+      const freq = node[1]
+      const [id, type] = node[0].split(":::")
+      const forgottenNode = type == "id"
+      const isHyper = type == "https" || type == "http"
+      if (!existingIds.has(id)){
+        //if (id == "//github.
+        edge_nodes.push({
+          id: id,
+          label: String(id),
+          title: String(id),
+          group: forgottenNode?"FORGOTTEN":"default",
+          color: "black",
+          shape: isHyper?"triangle":"dot",
+          size: 5
+        })
+      }
+    }
+    return(edge_nodes);
+  }
+  
+  public static mapEdges(rawEdges, shared_edge_threshold = 1) {
+    const edge_map = new Map();
+    const edgenode_shared = new Map();
+    for (let e of rawEdges){
       const type = e.type || 'UNKNOWN';
       const baseColor = EDGE_TYPE_COLORS[type] || '#848484';
-      const hidden = !(type==="id" || type==="file")
+      const hidden = false //!(type==="id" || type==="file")
+      const same_dest_key = `${e.dest}:::${type}` // nodes which share the same destination
       const edge = {
-        // Always unique, so duplicates are allowed
-        id: e.id ?? `edge_${idx}`,
+        id: `edge_${e.source}-${e.dest}-${type}`,
         from: e.source,
         to: e.dest,
         label: type,                 // shows on the edge
@@ -27,9 +56,17 @@ export default class Json2Graph {
         hidden: hidden,              // All id links
         title: e.outline || undefined // tooltip on hover
       };
-
-      return edge;
-    });
+      if (!edge_map.has(edge.id)){
+        edge_map.set(edge.id, edge)
+        edgenode_shared.set(same_dest_key, edgenode_shared.get(same_dest_key) + 1 || 1)
+      }
+    }
+    // We want edge nodes that have X shared neighbours
+    const shared_edge_nodes = new Map(
+      [...edgenode_shared.entries()].filter(([key, value]) => value > shared_edge_threshold)
+    );
+    const edgeArray = [...edge_map.values()]
+    return [edgeArray, shared_edge_nodes];
   }
 
   public static mapNodes(rawNodes) {

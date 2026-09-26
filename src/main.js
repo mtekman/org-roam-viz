@@ -23,12 +23,18 @@ async function initNetwork() {
 
     //const nodesArray = mapNodes(rawNodes);
     const nodesArray = Json2Graph.positionNodesByTopTags(rawNodes, 10);
-    const edgesArray = Json2Graph.mapEdges(rawEdges);
-
+    const [edgesArray, sharedEdgeNodes] = Json2Graph.mapEdges(rawEdges, 1);
+    const sharedEdgeNodesArray = Json2Graph.processSharedEdgeNodes(
+        sharedEdgeNodes, nodesArray);
+    const newNodes = [...nodesArray, ...sharedEdgeNodesArray]
+    // console.log("nodes=", newNodes)
+    // console.log("edges=", edgesArray)
+    // console.log("extraNodes=", sharedEdgeNodes)
+    
     const groups = TagColors.makeGroupColors(nodesArray);
     const container = document.getElementById('mynetwork');
 
-    const nodes = new DataSet(nodesArray);
+    const nodes = new DataSet(newNodes);
     const edges = new DataSet(edgesArray);
     const data = { nodes, edges };
 
