@@ -49,7 +49,7 @@ export default class NetworkEvents {
       let new_nds = NetworkEvents.populateExtraNodesFrom(nd.id, nodes, edges);
       NetworkEvents.extra_nodes[nd.id] = {clicked: false, data: new_nds}
       if (new_nds.length > 0){
-        nd.label = String(new_nds.length);
+        //nd.label = String(new_nds.length);
         nd.size = 20 + (10 * Math.log(new_nds.length));
       }
     }

@@ -26,7 +26,7 @@ export default class Json2Graph {
         //if (id == "//github.
         edge_nodes.push({
           id: id,
-          label: String(id),
+          //label: String(id),
           title: String(id),
           group: forgottenNode?"FORGOTTEN":"default",
           color: "black",
@@ -69,6 +69,10 @@ export default class Json2Graph {
     return [edgeArray, shared_edge_nodes];
   }
 
+  private static titleCase(str) {
+    return str.toLowerCase().replaceAll("_"," ").replace(/\b\p{L}/gu, c => c.toUpperCase());
+  }
+
   public static mapNodes(rawNodes) {
     return rawNodes.map(n => {
       const tags = n.tags || [];
@@ -82,7 +86,7 @@ export default class Json2Graph {
 
       return {
         id: n.id,
-        label: n.title || String(n.id), // what is shown on the node
+        label: this.titleCase(n.title) || String(n.id), // what is shown on the node
         title: NodeHelper.buildTooltipFromNode(n), // HTML tooltip
         // Normal nodes are visible initially
         hidden: false,
@@ -163,7 +167,7 @@ export default class Json2Graph {
 
         result.push({
           id: node.id,
-          label: node.title || String(node.id),
+          label: this.titleCase(node.title) || String(node.id),
           title: NodeHelper.buildTooltipFromNode(node),
           group: tag === 'other' ? 'default' : `tag:${tag}`,
           nodeTags: node._allTags,
