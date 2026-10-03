@@ -21,26 +21,148 @@
           height: 100vh;
           border: 1px solid #ccc;
       }
+
+      #legend {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          width: 95%;
+          background: rgba(200,200,200,0.5);
+          border: 1px solid #ccc;
+          border-radius: 10px;
+          padding: 8px 10px;
+          font-family: sans-serif;
+          font-size: 10px;
+          line-height: 0.2;
+          max-height: 95%;
+          overflow-y: auto;
+          z-index: 10;
+      }          
+
+      .tag-legend-cloud {
+          display: flex;
+          flex-direction: column;
+          gap: 0px;
+      }
+
+      .tag-cloud-items {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          line-height: 1.2;
+      }
+
+      .tag-cloud-item {
+          appearance: none;
+          background: transparent;
+          border: 2px solid transparent;
+          border-radius: 999px;
+          padding: 0px 3px;
+          cursor: pointer;
+          font: inherit;
+          color: inherit;
+          transition:
+              color 1.0s ease,
+              border-color 1.0s ease,
+              opacity 1.0s ease;
+      }
+
+      .tag-cloud-item.is-enabled {
+          opacity: 1;
+      }
+
+      .tag-cloud-item.is-disabled {
+          opacity: 0.35;
+          text-decoration: line-through;
+      }
+
+      .tag-cloud-item:hover {
+          opacity: 0.8;
+      }
+
+      .tag-cloud-item:focus-visible {
+          outline: 2px solid currentColor;
+          outline-offset: 2px;
+      }
+      
+      .tag-legend-controls {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 1px;
+      }
+
+      .dual-range {
+          position: relative;
+          width: 95%;
+          height: 24px;
+      }
+
+      .dual-range-track {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          right: 0;
+          height: 4px;
+          transform: translateY(-50%);
+          background: #ddd;
+          border-radius: 999px;
+          pointer-events: none;
+      }
+
+      .dual-range-fill {
+          position: absolute;
+          top: 50%;
+          height: 4px;
+          transform: translateY(-50%);
+          background: #4a90e2;
+          border-radius: 999px;
+          pointer-events: none;
+      }
+
+      .dual-range input[type="range"] {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          margin: 0;
+          background: transparent;
+          pointer-events: none;
+          appearance: none;
+      }
+
+      .dual-range input[type="range"]::-webkit-slider-thumb {
+          appearance: none;
+          pointer-events: auto;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #4a90e2;
+          border: 2px solid #fff;
+          box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+          cursor: pointer;
+      }
+
+      .dual-range input[type="range"]::-moz-range-thumb {
+          pointer-events: auto;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #4a90e2;
+          border: 2px solid #fff;
+          box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+          cursor: pointer;
+      }
+
+      .dual-range-value {
+          min-width: 52px;
+          font-variant-numeric: tabular-nums;
+      }      
     </style>
   </head>
   <body>
     <div id="mynetwork"></div>
     <script type="module" src="/src/main.js"></script>
-    <div id="legend" style="
-                            position: absolute;
-                            top: 5px;
-                            right: 5px;
-                            background: rgba(200,200,200,0.5);
-                            border: 1px solid #ccc;
-                            border-radius: 10px;
-                            padding: 8px 10px;
-                            font-family: sans-serif;
-                            font-size: 10px;
-                            line-height: 0.2;
-                            max-height: 95%;
-                            overflow-y: auto;
-                            z-index: 10;
-                            ">
+    <div id="legend">
       <div style="font-weight:bold; margin-bottom:6px;">Filter by tag</div>
       <div id="legend-items"></div>
     </div>

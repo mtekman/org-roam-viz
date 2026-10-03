@@ -12,44 +12,99 @@ export type GroupEntry = {
 
 export type Groups = Record<string, GroupEntry>;
 
+export type NodesDataSource = {
+  get: () => any[];
+  update: (updates: any[]) => void;
+};
+
+export type TagLegendFilterState = {
+  enabledTags: Set<string>;
+  untaggedEnabled: boolean;
+  minMembers: number;
+  maxMembers: number;
+};
+
+export type TagLegendStateData = {
+  tagCounts: Map<string, number>;
+  untaggedCount: number;
+  allTags: string[];
+  filter: TagLegendFilterState;
+};
+
 // ------------------------
 // State management
 // ------------------------
 export class TagLegendState {
   private constructor() {}
 
-  public static createFromNodes(nodes: any[]) {
+  public static createFromNodes(nodes: any[]): TagLegendStateData {
     const tagCounts = new Map<string, number>();
     let untaggedCount = 0;
 
     for (const node of nodes) {
       const tags: string[] = node.nodeTags || [];
+
       if (tags.length === 0) {
         untaggedCount++;
       } else {
-        for (const t of tags) {
-          tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+        for (const tag of tags) {
+          tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
         }
       }
     }
 
     const allTags = Array.from(tagCounts.keys()).sort();
-    const enabledTags = new Set<string>(allTags);
-    const untaggedEnabled = true;
+
+    const maxMemberCount = this.getMaxMemberCount(
+      tagCounts,
+      allTags,
+      untaggedCount
+    );
 
     return {
       tagCounts,
       untaggedCount,
       allTags,
-      enabledTags,
-      untaggedEnabled,
+      filter: {
+        enabledTags: new Set<string>(allTags),
+        untaggedEnabled: true,
+        minMembers: 1,
+        maxMembers: maxMemberCount,
+      },
     };
   }
 
+  public static getMaxMemberCount(
+    tagCounts: Map<string, number>,
+    allTags: string[],
+    untaggedCount: number
+  ): number {
+    return Math.max(
+      1,
+      ...allTags.map((tag) => tagCounts.get(tag) || 0),
+      untaggedCount
+    );
+  }
+
+  public static getVisibleTags(
+    tagCounts: Map<string, number>,
+    allTags: string[],
+    filter: TagLegendFilterState
+  ): string[] {
+    return allTags.filter((tag) => {
+      const count = tagCounts.get(tag) || 0;
+
+      return (
+        count >= filter.minMembers &&
+        count <= filter.maxMembers
+      );
+    });
+  }
+
   public static applyTagFilter(
-    nodesDS: { get: () => any[]; update: (updates: any[]) => void },
-    enabledTags: Set<string>,
-    untaggedEnabled: boolean
+    nodesDS: NodesDataSource,
+    tagCounts: Map<string, number>,
+    filter: TagLegendFilterState
   ): void {
     const updates: { id: any; hidden: boolean }[] = [];
 
@@ -57,13 +112,23 @@ export class TagLegendState {
       const tags: string[] = node.nodeTags || [];
 
       let visible: boolean;
+
       if (tags.length === 0) {
-        visible = untaggedEnabled;
+        visible = filter.untaggedEnabled;
       } else {
-        visible = tags.some((t) => enabledTags.has(t));
+        visible = tags.some((tag) => {
+          const count = tagCounts.get(tag) || 0;
+
+          return (
+            filter.enabledTags.has(tag) &&
+            count >= filter.minMembers &&
+            count <= filter.maxMembers
+          );
+        });
       }
 
       const hidden = !visible;
+
       if (node.hidden !== hidden) {
         updates.push({ id: node.id, hidden });
       }
@@ -83,332 +148,330 @@ export class TagLegendUI {
 
   public static build(
     legendContainerId: string,
-    nodesDS: { get: () => any[]; update: (updates: any[]) => void },
-    state: {
-      tagCounts: Map<string, number>;
-      untaggedCount: number;
-      allTags: string[];
-      enabledTags: Set<string>;
-      untaggedEnabled: boolean;
-    },
+    nodesDS: NodesDataSource,
+    state: TagLegendStateData,
     groups: Groups
   ): void {
-    const legendItemsEl = document.getElementById(legendContainerId);
-    if (!legendItemsEl) return;
+    const legendEl = document.getElementById(legendContainerId);
+    if (!legendEl) return;
 
-    const { tagCounts, untaggedCount, allTags, enabledTags } = state;
-    let { untaggedEnabled } = state;
+    legendEl.innerHTML = '';
+    legendEl.classList.add('tag-legend-cloud');
 
-    const applyTagFilter = () => {
-      TagLegendState.applyTagFilter(nodesDS, enabledTags, untaggedEnabled);
+    const {
+      tagCounts,
+      untaggedCount,
+      allTags,
+      filter,
+    } = state;
+
+    const absoluteMax = TagLegendState.getMaxMemberCount(
+      tagCounts,
+      allTags,
+      untaggedCount
+    );
+
+    filter.minMembers = Math.min(
+      Math.max(1, filter.minMembers || 1),
+      absoluteMax
+    );
+
+    filter.maxMembers = Math.min(
+      Math.max(filter.minMembers, filter.maxMembers || absoluteMax),
+      absoluteMax
+    );
+
+    const applyFilter = () => {
+      TagLegendState.applyTagFilter(
+        nodesDS,
+        tagCounts,
+        filter
+      );
     };
 
-    this.renderControls(legendItemsEl, allTags, enabledTags, () => {
-      untaggedEnabled = true;
-      for (const t of allTags) enabledTags.add(t);
-      applyTagFilter();
-    }, () => {
-      untaggedEnabled = false;
-      enabledTags.clear();
-      applyTagFilter();
+    this.renderRangeControl(
+      legendEl,
+      state,
+      groups,
+      absoluteMax,
+      applyFilter
+    );
+
+    this.renderCloud(
+      legendEl,
+      state,
+      groups,
+      applyFilter
+    );
+
+    applyFilter();
+  }
+
+  private static renderRangeControl(
+    legendEl: HTMLElement,
+    state: TagLegendStateData,
+    groups: Groups,
+    absoluteMax: number,
+    applyFilter: () => void
+  ): void {
+    const { filter } = state;
+
+    const controls = document.createElement('div');
+    controls.className = 'tag-legend-controls';
+
+    const rangeLabel = document.createElement('label');
+    rangeLabel.textContent = 'Members:';
+    rangeLabel.style.marginRight = '8px';
+
+    const rangeWrapper = document.createElement('div');
+    rangeWrapper.className = 'dual-range';
+
+    const rangeTrack = document.createElement('div');
+    rangeTrack.className = 'dual-range-track';
+
+    const rangeFill = document.createElement('div');
+    rangeFill.className = 'dual-range-fill';
+
+    const minRange = document.createElement('input');
+    minRange.type = 'range';
+    minRange.className = 'range-min';
+    minRange.min = '1';
+    minRange.max = String(absoluteMax);
+    minRange.step = '1';
+    minRange.value = String(filter.minMembers);
+    minRange.setAttribute('aria-label', 'Minimum number of members');
+
+    const maxRange = document.createElement('input');
+    maxRange.type = 'range';
+    maxRange.className = 'range-max';
+    maxRange.min = '1';
+    maxRange.max = String(absoluteMax);
+    maxRange.step = '1';
+    maxRange.value = String(filter.maxMembers);
+    maxRange.setAttribute('aria-label', 'Maximum number of members');
+
+    const rangeValue = document.createElement('span');
+    rangeValue.className = 'dual-range-value';
+
+    const renderCloudForRange = () => {
+      this.renderCloud(
+        legendEl,
+        state,
+        groups,
+        applyFilter
+      );
+    };
+
+    const updateRangeUI = () => {
+      const denominator = Math.max(1, absoluteMax - 1);
+
+      const minPercent =
+        ((filter.minMembers - 1) / denominator) * 100;
+
+      const maxPercent =
+        ((filter.maxMembers - 1) / denominator) * 100;
+
+      rangeFill.style.left = `${minPercent}%`;
+      rangeFill.style.width = `${Math.max(
+        0,
+        maxPercent - minPercent
+      )}%`;
+
+      rangeValue.textContent =
+        `${filter.minMembers}–${filter.maxMembers}`;
+    };
+
+    minRange.addEventListener('input', () => {
+      const parsed = Number.parseInt(minRange.value, 10);
+      const nextMin = Number.isFinite(parsed) ? parsed : 1;
+
+      filter.minMembers = Math.min(
+        Math.max(1, nextMin),
+        filter.maxMembers
+      );
+
+      minRange.value = String(filter.minMembers);
+
+      updateRangeUI();
+      renderCloudForRange();
+      applyFilter();
     });
 
-    this.renderTagCheckboxes(
-      legendItemsEl,
-      allTags,
+    maxRange.addEventListener('input', () => {
+      const parsed = Number.parseInt(maxRange.value, 10);
+      const nextMax = Number.isFinite(parsed) ? parsed : absoluteMax;
+
+      filter.maxMembers = Math.max(
+        Math.min(absoluteMax, nextMax),
+        filter.minMembers
+      );
+
+      maxRange.value = String(filter.maxMembers);
+
+      updateRangeUI();
+      renderCloudForRange();
+      applyFilter();
+    });
+
+    rangeWrapper.appendChild(rangeTrack);
+    rangeWrapper.appendChild(rangeFill);
+    rangeWrapper.appendChild(minRange);
+    rangeWrapper.appendChild(maxRange);
+
+    controls.appendChild(rangeLabel);
+    controls.appendChild(rangeWrapper);
+    controls.appendChild(rangeValue);
+
+    legendEl.appendChild(controls);
+
+    updateRangeUI();
+  }
+
+  private static renderCloud(
+    legendEl: HTMLElement,
+    state: TagLegendStateData,
+    groups: Groups,
+    applyFilter: () => void
+  ): void {
+    const existingCloud = legendEl.querySelector('.tag-cloud-items');
+
+    if (existingCloud) {
+      existingCloud.remove();
+    }
+
+    const {
       tagCounts,
-      enabledTags,
-      applyTagFilter,
-      groups
-    );
-
-    this.renderUntaggedCheckbox(
-      legendItemsEl,
       untaggedCount,
-      () => untaggedEnabled,
-      (value: boolean) => {
-        untaggedEnabled = value;
-        applyTagFilter();
-      }
+      allTags,
+      filter,
+    } = state;
+
+    const visibleTags = TagLegendState.getVisibleTags(
+      tagCounts,
+      allTags,
+      filter
     );
 
-    this.syncSelectAllState(legendItemsEl, allTags, enabledTags, untaggedEnabled);
-  }
+    const isUntaggedVisible =
+      untaggedCount >= filter.minMembers &&
+      untaggedCount <= filter.maxMembers;
 
-  private static renderControls(
-    container: HTMLElement,
-    allTags: string[],
-    enabledTags: Set<string>,
-    onSelectAll: () => void,
-    onDeselectAll: () => void
-  ): void {
-    const controlsRow = document.createElement('div');
-    controlsRow.style.marginBottom = '8px';
+    const maxCount = Math.max(
+      1,
+      ...visibleTags.map((tag) => tagCounts.get(tag) || 0),
+      isUntaggedVisible ? untaggedCount : 0
+    );
 
-    const selectAllCheckbox = document.createElement('input');
-    selectAllCheckbox.type = 'checkbox';
-    selectAllCheckbox.id = 'tag-select-all';
-    selectAllCheckbox.checked = true;
+    const cloud = document.createElement('div');
+    cloud.className = 'tag-cloud-items';
 
-    const selectAllLabel = document.createElement('label');
-    selectAllLabel.htmlFor = selectAllCheckbox.id;
-    selectAllLabel.textContent = 'Select all';
-    selectAllLabel.style.marginLeft = '4px';
-    selectAllLabel.style.cursor = 'pointer';
+    const createTagButton = (
+      tag: string,
+      count: number,
+      isEnabled: boolean,
+      onToggle: (enabled: boolean) => void,
+      color?: string
+    ) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'tag-cloud-item';
+      button.dataset.tag = tag;
+      button.setAttribute('aria-pressed', String(isEnabled));
+      button.textContent = `${tag} (${count})`;
 
-    const deselectAllCheckbox = document.createElement('input');
-    deselectAllCheckbox.type = 'checkbox';
-    deselectAllCheckbox.id = 'tag-deselect-all';
-    deselectAllCheckbox.checked = false;
+      const ratio = count / maxCount;
+      const fontSize = 9 + ratio * 12;
 
-    const deselectAllLabel = document.createElement('label');
-    deselectAllLabel.htmlFor = deselectAllCheckbox.id;
-    deselectAllLabel.textContent = 'Deselect all';
-    deselectAllLabel.style.marginLeft = '8px';
-    deselectAllLabel.style.cursor = 'pointer';
+      button.style.fontSize = `${fontSize.toFixed(1)}px`;
 
-    selectAllCheckbox.addEventListener('change', () => {
-      if (selectAllCheckbox.checked) {
-        onSelectAll();
-
-        for (const t of allTags) {
-          const cb = document.getElementById(`tag-${t}`) as HTMLInputElement | null;
-          if (cb) cb.checked = true;
-        }
-        const untaggedCb = document.getElementById(
-          'tag-__untagged__'
-        ) as HTMLInputElement | null;
-        if (untaggedCb) untaggedCb.checked = true;
-
-        this.syncSelectAllState(container, allTags, enabledTags, true);
+      if (color) {
+        button.style.setProperty('--tag-color', color);
       }
-    });
 
-    deselectAllCheckbox.addEventListener('change', () => {
-      if (deselectAllCheckbox.checked) {
-        onDeselectAll();
+      this.setButtonState(button, isEnabled, color);
 
-        for (const t of allTags) {
-          const cb = document.getElementById(`tag-${t}`) as HTMLInputElement | null;
-          if (cb) cb.checked = false;
-        }
-        const untaggedCb = document.getElementById(
-          'tag-__untagged__'
-        ) as HTMLInputElement | null;
-        if (untaggedCb) untaggedCb.checked = false;
+      button.addEventListener('click', () => {
+        const nextEnabled =
+          button.getAttribute('aria-pressed') !== 'true';
 
-        this.syncSelectAllState(container, allTags, enabledTags, false);
-      }
-    });
+        button.setAttribute('aria-pressed', String(nextEnabled));
+        this.setButtonState(button, nextEnabled, color);
 
-    controlsRow.appendChild(selectAllCheckbox);
-    controlsRow.appendChild(selectAllLabel);
-    controlsRow.appendChild(deselectAllCheckbox);
-    controlsRow.appendChild(deselectAllLabel);
-    container.appendChild(controlsRow);
-  }
-
-  private static renderTagCheckboxes(
-    container: HTMLElement,
-    allTags: string[],
-    tagCounts: Map<string, number>,
-    enabledTags: Set<string>,
-    applyTagFilter: () => void,
-    groups: Groups
-  ): void {
-    for (const tag of allTags) {
-      const count = tagCounts.get(tag) || 0;
-      const groupKey = `tag:${tag}`;
-      const group = groups[groupKey];
-
-      const row = document.createElement('div');
-      row.style.marginBottom = '4px';
-
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.id = `tag-${tag}`;
-      checkbox.checked = true;
-
-      checkbox.addEventListener('change', () => {
-        if (checkbox.checked) {
-          enabledTags.add(tag);
-        } else {
-          enabledTags.delete(tag);
-        }
-        this.syncSelectAllStateFromContainer(container, allTags, enabledTags);
-        applyTagFilter();
+        onToggle(nextEnabled);
+        applyFilter();
       });
 
-      const label = document.createElement('label');
-      label.htmlFor = checkbox.id;
-      label.textContent = `${tag} (${count})`;
-      label.style.marginLeft = '2px';
-      label.style.cursor = 'pointer';
+      return button;
+    };
 
-      // Apply color from groups if present
-      if (group?.color?.background) {
-        label.style.color = group.color.background;
-        label.style.fontWeight = '100';
-      }
-      row.appendChild(checkbox);
-      row.appendChild(label);
-      container.appendChild(row);
+    for (const tag of visibleTags) {
+      const count = tagCounts.get(tag) || 0;
+      const group = groups[`tag:${tag}`];
+      const color = group?.color?.background;
+
+      cloud.appendChild(
+        createTagButton(
+          tag,
+          count,
+          filter.enabledTags.has(tag),
+          (isEnabled) => {
+            if (isEnabled) {
+              filter.enabledTags.add(tag);
+            } else {
+              filter.enabledTags.delete(tag);
+            }
+          },
+          color
+        )
+      );
     }
+
+    if (isUntaggedVisible) {
+      const untaggedButton = createTagButton(
+        'untagged',
+        untaggedCount,
+        filter.untaggedEnabled,
+        (isEnabled) => {
+          filter.untaggedEnabled = isEnabled;
+        }
+      );
+
+      untaggedButton.dataset.tag = '__untagged__';
+      cloud.appendChild(untaggedButton);
+    }
+
+    legendEl.appendChild(cloud);
   }
 
-  private static renderUntaggedCheckbox(
-    container: HTMLElement,
-    untaggedCount: number,
-    getUntaggedEnabled: () => boolean,
-    setUntaggedEnabled: (value: boolean) => void
+  private static setButtonState(
+    button: HTMLButtonElement,
+    isEnabled: boolean,
+    color?: string
   ): void {
-    if (untaggedCount === 0) return;
+    button.classList.toggle('is-enabled', isEnabled);
+    button.classList.toggle('is-disabled', !isEnabled);
 
-    const row = document.createElement('div');
-    row.style.marginBottom = '4px';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = 'tag-__untagged__';
-    checkbox.checked = true;
-
-    checkbox.addEventListener('change', () => {
-      setUntaggedEnabled(checkbox.checked);
-      this.syncSelectAllStateForUntagged(container, checkbox.checked);
-    });
-
-    const label = document.createElement('label');
-    label.htmlFor = checkbox.id;
-    label.textContent = `untagged (${untaggedCount})`;
-    label.style.marginLeft = '4px';
-    label.style.cursor = 'pointer';
-
-    row.appendChild(checkbox);
-    row.appendChild(label);
-    container.appendChild(row);
-  }
-
-  private static syncSelectAllState(
-    container: HTMLElement,
-    allTags: string[],
-    enabledTags: Set<string>,
-    untaggedEnabled: boolean
-  ): void {
-    const selectAllCheckbox = document.getElementById(
-      'tag-select-all'
-    ) as HTMLInputElement | null;
-    const deselectAllCheckbox = document.getElementById(
-      'tag-deselect-all'
-    ) as HTMLInputElement | null;
-    if (!selectAllCheckbox || !deselectAllCheckbox) return;
-
-    const allRealTagsSelected =
-      allTags.length > 0 &&
-      allTags.every((t) => enabledTags.has(t));
-
-    const noRealTagsSelected =
-      allTags.length === 0 ||
-      allTags.every((t) => !enabledTags.has(t));
-
-    selectAllCheckbox.checked = allRealTagsSelected && untaggedEnabled;
-    deselectAllCheckbox.checked = noRealTagsSelected && !untaggedEnabled;
-  }
-
-  private static syncSelectAllStateFromContainer(
-    container: HTMLElement,
-    allTags: string[],
-    enabledTags: Set<string>
-  ): void {
-    const selectAllCheckbox = container.querySelector(
-      '#tag-select-all'
-    ) as HTMLInputElement | null;
-    const deselectAllCheckbox = container.querySelector(
-      '#tag-deselect-all'
-    ) as HTMLInputElement | null;
-    const untaggedCb = container.querySelector(
-      '#tag-__untagged__'
-    ) as HTMLInputElement | null;
-
-    if (!selectAllCheckbox || !deselectAllCheckbox) return;
-
-    const untaggedEnabled = untaggedCb ? untaggedCb.checked : false;
-
-    const allRealTagsSelected =
-      allTags.length > 0 &&
-      allTags.every((t) => enabledTags.has(t));
-
-    const noRealTagsSelected =
-      allTags.length === 0 ||
-      allTags.every((t) => !enabledTags.has(t));
-
-    selectAllCheckbox.checked = allRealTagsSelected && untaggedEnabled;
-    deselectAllCheckbox.checked = noRealTagsSelected && !untaggedEnabled;
-  }
-
-  private static syncSelectAllStateForUntagged(
-    container: HTMLElement,
-    untaggedEnabled: boolean
-  ): void {
-    const selectAllCheckbox = container.querySelector(
-      '#tag-select-all'
-    ) as HTMLInputElement | null;
-    const deselectAllCheckbox = container.querySelector(
-      '#tag-deselect-all'
-    ) as HTMLInputElement | null;
-    if (!selectAllCheckbox || !deselectAllCheckbox) return;
-
-    const allTagsCheckboxes = container.querySelectorAll<HTMLInputElement>('input[id^="tag-"]');
-    const realTagIds = Array.from(allTagsCheckboxes)
-      .map((cb) => cb.id)
-      .filter(
-        (id) =>
-          id !== 'tag-select-all' &&
-          id !== 'tag-deselect-all' &&
-          id !== 'tag-__untagged__'
-      )
-      .map((id) => id.replace('tag-', ''));
-
-    const enabledTags = new Set<string>(
-      realTagIds.filter((t) => {
-        const cb = document.getElementById(`tag-${t}`) as HTMLInputElement | null;
-        return cb ? cb.checked : false;
-      })
-    );
-
-    const allRealTagsSelected =
-      realTagIds.length > 0 &&
-      realTagIds.every((t) => enabledTags.has(t));
-
-    const noRealTagsSelected =
-      realTagIds.length === 0 ||
-      realTagIds.every((t) => !enabledTags.has(t));
-
-    selectAllCheckbox.checked = allRealTagsSelected && untaggedEnabled;
-    deselectAllCheckbox.checked = noRealTagsSelected && !untaggedEnabled;
+    if (color) {
+      button.style.color = '';
+      button.style.backgroundColor = isEnabled ? color : '';
+    }
   }
 }
 
+// ------------------------
+// Public API
+// ------------------------
 export default class TagLegend {
   private constructor() {}
 
-  /**
-   * Build the tag legend UI for the given container and data source.
-   * Call once at initialization.
-   *
-   * groups: object like:
-   * {
-   *   default: { color: { background: '#...', border: '#...' } },
-   *   'tag:cream': { color: { background: '#...', border: '#...' } },
-   *   ...
-   * }
-   */
   public static init(
-    nodesDS: { get: () => any[]; update: (updates: any[]) => void },
+    nodesDS: NodesDataSource,
     legendContainerId: string,
     groups: Groups
   ): void {
     const nodes = nodesDS.get();
     const state = TagLegendState.createFromNodes(nodes);
+
     TagLegendUI.build(legendContainerId, nodesDS, state, groups);
   }
 }

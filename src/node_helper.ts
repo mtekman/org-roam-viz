@@ -10,17 +10,13 @@ export default class NodeHelper {
       parts.push(`<em>${NodeHelper.escapeHtml(node.heading)}</em>`);
     }
 
-    const tags = node.tags || {};
-    const areaTags = tags.area || [];
-    const generalTags = tags.general || [];
-
-    const allTags = [...areaTags, ...generalTags];
+    const allTags = node.tags || [];
     if (allTags.length > 0) {
-      parts.push(`Tags: ${allTags.map(NodeHelper.escapeHtml).join(', ')}`);
+      parts.push(`tags: ${allTags.map(NodeHelper.escapeHtml).join(', ')}`);
     }
 
     if (parts.length === 0) return undefined;
-    return parts.join('<br>');
+    return parts.join('\n');
   }
 
   public static escapeHtml(str: String): String {
