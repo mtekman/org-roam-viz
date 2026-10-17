@@ -5,7 +5,7 @@
 ;; Author: Mehmet Tekman
 ;; URL: https://github.com/mtekman/org-roam-viz.el
 ;; Keywords: outlines
-;; Package-Requires: ((emacs "26.1") (dash "2.17.0") (org "9.1.6"))
+;; Package-Requires: ((emacs "26.1"))
 ;; Version: 0.1
 
 ;;; License:
@@ -25,101 +25,81 @@
 ;;; Export nodes and edges from the org-roam sqlite database, and
 ;;; render interactively.
 
-;;; Method to the madness: Build node_modules and public HTML, 
-;;; 
+;;; Code:
 
-
-(defcustom org-roam-db-file org-roam-db-location
+(defcustom org-roam-viz-db-file org-roam-db-location
   "Location of the org-roam sqlite3 database."
   :group 'org-roam-viz
   :type 'string)
 
-(defcustom org-roam-viz-viewer (executable-find "firefox")
-  "Method to view the org-roam-viz graph.
-It may be one of the following:
-  - a string representing the path to the executable for viewing the graph.
-  - a function accepting a single argument: the graph file path.
-  - nil uses `view-file' to view the graph."
-  :type '(choice
-          (string   :tag "Path to executable")
-          (function :tag "Function to display graph" eww-open-file)
-          (const    :tag "view-file"))
-  :group 'org-roam)
-
 (defcustom org-roam-viz-port 3000
-  "Port to host the page"
+  "Port to host the page."
+  :group 'org-roam-viz
   :type 'integer)
 
-(defvar org-roam-viz--buffer "*org-roam-viz*"
-  "org-roam-viz message buffer")
-
-(defun org-roam-viz--open ()
-  "Open localhost:port using `org-roam-viz-viewer'."
-  (let ((page "http://localhost:3000"))
-    (pcase org-roam-viz-viewer
-      ((pred stringp)
-       (if (executable-find org-roam-viz-viewer)
-           (condition-case err
-               (call-process org-roam-viz-viewer nil 0 nil page)
-             (error (user-error "Failed to open org-roam-viz graph: %s" err)))
-         (user-error "Executable not found: \"%s\"" org-roam-viz-viewer)))
-      ((pred functionp) (funcall org-roam-viz-viewer page))
-      (_ (signal 'wrong-type-argument `((functionp stringp null) ,org-roam-viz-viewer))))))
-
 (defun org-roam-viz--get-install-dir()
-  (let ((dir "~/repos/_mtekman/org-brain-viz/"))
+  "Get the installation directory."
+  (let
+      ;;((dir "~/repos/_mtekman/org-brain-viz/"))
+      ((dir (symbol-file 'org-roam-viz-port)))
     dir))
 
-(defvar org-roam-viz--install-dir (org-roam-viz--get-install-dir))
+(defvar org-roam-viz--buffer "*org-roam-viz*"
+  "Org-roam-viz message buffer.")
+(defvar org-roam-viz--install-dir (org-roam-viz--get-install-dir)
+  "Package installation directory.")
+(defvar org-roam-viz--serve-process nil
+  "Async webpage run process pointer.")
 
 ;; --- Node and NPM related functions
 (defun org-roam-viz-init ()
   "Install node modules and build public facing HTML."
-  (interactive)  
+  (interactive)
   (org-roam-viz--npm-initialise-node-modules)
   (org-roam-viz--npm-build-page))
 
-(defvar org-roam-viz--serve-process nil)
-
 (defun org-roam-viz--npm-command-async (&rest commandlist)
-  "Run an NPM async command in the package directory."
+  "Run an NPM async command in the package directory.
+Optional argument COMMANDLIST expands arguments to npm."
   (setq org-roam-viz--serve-process
         (let ((default-directory org-roam-viz--install-dir))
           (apply #'start-process "npm-procname"
                  org-roam-viz--buffer "npm" commandlist))))
 
 (defun org-roam-viz--npm-command-async-kill ()
-  "Kill the async command"
+  "Kill the async command."
   (kill-process org-roam-viz--serve-process)
   (setq org-roam-viz--serve-process nil))
 
 (defun org-roam-viz--npm-command (&rest commandlist)
-  "Run an NPM command in the package directory."
+  "Run an NPM command in the package directory.
+Optional argument COMMANDLIST expands arguments to npm."
   (let ((default-directory org-roam-viz--install-dir))
     (apply #'call-process "npm" nil
            org-roam-viz--buffer nil commandlist)))
 
 (defun org-roam-viz--npm-initialise-node-modules ()
-  "Install the npm package's dependencies in a central location"
+  "Install the npm package's dependencies in a central location."
   (org-roam-viz--npm-command "install" ".")
   (message "org-roam-viz: Populated node modules at '%s'"
            (concat org-roam-viz--install-dir "node_modules")))
 
 (defun org-roam-viz--npm-build-page ()
   "Use esbuild to compile the page components into a single serving HTML."
-    (org-roam-viz--npm-command "run" "page-build")
-    (message "org-roam-viz: Public HTML compiled to '%s'"
-             (concat org-roam-viz--install-dir "public")))
+  (org-roam-viz--npm-command "run" "page-build")
+  (message "org-roam-viz: Public HTML compiled to '%s'"
+           (concat org-roam-viz--install-dir "public")))
 ;; ---
 
 ;; Graph related functions
 (defun org-roam-viz-regenerate ()
-  "Generate nodes and edges from the sqlite file"
+  "Generate nodes and edges from the sqlite file."
   (interactive)
-  (org-roam-viz--npm-command "run" "graph-build" "--" org-roam-db-file)
+  (org-roam-viz--sanity-check)
+  (org-roam-viz--npm-command "run" "graph-build" "--" org-roam-viz-db-file)
   (with-current-buffer org-roam-viz--buffer
     (goto-char (buffer-end 1))
-    (re-search-backward (rx bol "Wrote " 
+    (re-search-backward (rx bol "Wrote "
                             (group (+ num)) " nodes and "
                             (group (+ num)) " edges to "
                             (group (+ (not space)))))
@@ -139,7 +119,7 @@ It may be one of the following:
   (org-roam-viz--npm-command-async-kill))
 
 (defun org-roam-viz-start ()
-  "Render the graph of nodes and edges"
+  "Render the graph of nodes and edges."
   (interactive)
   (org-roam-viz--npm-command-async
    "run" "page-serve" "--" "-l" (format "%s" org-roam-viz-port))
