@@ -46,8 +46,6 @@
 
 (defvar org-roam-viz--buffer "*org-roam-viz*"
   "Org-roam-viz message buffer.")
-(defvar org-roam-viz--install-dir (org-roam-viz--get-install-dir)
-  "Package installation directory.")
 (defvar org-roam-viz--serve-process nil
   "Async webpage run process pointer.")
 
@@ -62,7 +60,7 @@
   "Run an NPM async command in the package directory.
 Optional argument COMMANDLIST expands arguments to npm."
   (setq org-roam-viz--serve-process
-        (let ((default-directory org-roam-viz--install-dir))
+        (let ((default-directory (org-roam-viz--get-install-dir)))
           (apply #'start-process "npm-procname"
                  org-roam-viz--buffer "npm" commandlist))))
 
@@ -74,7 +72,7 @@ Optional argument COMMANDLIST expands arguments to npm."
 (defun org-roam-viz--npm-command (&rest commandlist)
   "Run an NPM command in the package directory.
 Optional argument COMMANDLIST expands arguments to npm."
-  (let ((default-directory org-roam-viz--install-dir))
+  (let ((default-directory (org-roam-viz--get-install-dir)))
     (apply #'call-process "npm" nil
            org-roam-viz--buffer nil commandlist)))
 
@@ -82,13 +80,13 @@ Optional argument COMMANDLIST expands arguments to npm."
   "Install the npm package's dependencies in a central location."
   (org-roam-viz--npm-command "install" ".")
   (message "org-roam-viz: Populated node modules at '%s'"
-           (concat org-roam-viz--install-dir "node_modules")))
+           (concat (org-roam-viz--get-install-dir) "node_modules")))
 
 (defun org-roam-viz--npm-build-page ()
   "Use esbuild to compile the page components into a single serving HTML."
   (org-roam-viz--npm-command "run" "page-build")
   (message "org-roam-viz: Public HTML compiled to '%s'"
-           (concat org-roam-viz--install-dir "public")))
+           (concat (org-roam-viz--get-install-dir) "public")))
 ;; ---
 
 ;; Graph related functions
