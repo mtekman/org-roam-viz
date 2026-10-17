@@ -5,7 +5,7 @@
 ;; Author: Mehmet Tekman
 ;; URL: https://github.com/mtekman/org-roam-viz.el
 ;; Keywords: outlines
-;; Package-Requires: ((emacs "26.1"))
+;; Package-Requires: ((emacs "28.1"))
 ;; Version: 0.1
 
 ;;; License:
@@ -119,7 +119,8 @@ Optional argument COMMANDLIST expands arguments to npm."
   (message "org-roam-viz: visualization stopped"))
 
 (defun org-roam-viz--sanity-check (&rest graphtoo)
-  "Check that all files are populated, and that existing instances are terminated."
+  "Check that all files are populated, and that existing instances are terminated.
+Optional argument GRAPHTOO to include existence of generated nodes and edges."
   (let* ((inst-dir (org-roam-viz--get-install-dir))
          (pub-dir (file-name-concat inst-dir "public"))
          (node-modules-p (file-exists-p (file-name-concat inst-dir "node_modules")))
