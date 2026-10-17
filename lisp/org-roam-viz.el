@@ -38,11 +38,12 @@
   :type 'integer)
 
 (defun org-roam-viz--get-install-dir()
-  "Get the installation directory."
-  (let
-      ;;((dir "~/repos/_mtekman/org-brain-viz/"))
-      ((dir (symbol-file 'org-roam-viz-port)))
-    dir))
+  "Get the installation directory.  Works with straight for now."
+  (let* ((fname-elc (symbol-file 'org-roam-viz-port))
+         (fname-el (string-replace ".elc" ".el" fname-elc))
+         (fname-symlink (file-truename fname-el))
+         (install-dir (split-string fname-symlink "lisp")))
+    (car install-dir)))
 
 (defvar org-roam-viz--buffer "*org-roam-viz*"
   "Org-roam-viz message buffer.")
