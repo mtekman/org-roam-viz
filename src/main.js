@@ -20,16 +20,11 @@ async function initNetwork() {
         loadJson('/nodes.json'),
         loadJson('/edges.json')
     ]);
-
-    //const nodesArray = mapNodes(rawNodes);
-    const nodesArray = Json2Graph.positionNodesByTopTags(rawNodes, 10);
+    const nodesArray = Json2Graph.positionNodesByTopTags(rawNodes, 15);
     const [edgesArray, sharedEdgeNodes] = Json2Graph.mapEdges(rawEdges, 1);
     const sharedEdgeNodesArray = Json2Graph.processSharedEdgeNodes(
         sharedEdgeNodes, nodesArray);
     const newNodes = [...nodesArray, ...sharedEdgeNodesArray]
-    // console.log("nodes=", newNodes)
-    // console.log("edges=", edgesArray)
-    // console.log("extraNodes=", sharedEdgeNodes)
     
     const groups = TagColors.makeGroupColors(nodesArray);
     const container = document.getElementById('mynetwork');
@@ -47,9 +42,6 @@ async function initNetwork() {
     network.on('click', function(graph_data){
         NetworkEvents.expandSingleNodes(graph_data, network, nodes)
     })
-       
-        
-    
 }
 
 initNetwork().catch(err => {
@@ -59,4 +51,3 @@ initNetwork().catch(err => {
         `<div style="padding:1rem;color:red;">Error: ${err.message}</div>`
     );
 });
-// Generate force diagram:1 ends here

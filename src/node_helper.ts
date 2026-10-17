@@ -7,7 +7,7 @@ export default class NodeHelper {
       parts.push(`${NodeHelper.escapeHtml(node.title)}`);
     }
     if (node.heading) {
-      parts.push(`<em>${NodeHelper.escapeHtml(node.heading)}</em>`);
+      parts.push(`${NodeHelper.escapeHtml(node.heading)}`);
     }
 
     const allTags = node.tags || [];
