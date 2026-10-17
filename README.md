@@ -27,6 +27,8 @@ default, but can be expanded by clicking on the node.
 
 ### Elisp Summary
 
+Run `org-roam-viz-start`, and follow the messages.
+
 ##### Functions
 
 * `org-roam-viz-init` needs to be run exactly once, builds the npm
@@ -58,6 +60,6 @@ You can customize the bindings, and the serving port in the install decleration:
          ("C-c n x" . org-roam-viz-stop))
   :custom (org-roam-viz-port 8914))
 ```
-
 By default the package uses the `org-roam-db-location` to find the sqlite3 database, but
 you can override this by changing the `org-roam-viz-db-file` setting.
+
