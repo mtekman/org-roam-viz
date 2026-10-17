@@ -117,18 +117,20 @@ Optional argument COMMANDLIST expands arguments to npm."
   (org-roam-viz--npm-command-async-kill)
   (message "org-roam-viz: visualization stopped"))
 
-(defun org-roam-viz--sanity-check ()
+(defun org-roam-viz--sanity-check (&rest graphtoo)
   "Check that all files are populated, and that existing instances are terminated."
-  (let* ((pub-dir (concat org-roam-viz--install-dir (f-path-separator) "public"))
-         (node-modules-p (f-exists? (concat org-roam-viz--install-dir
-                                            (f-path-separator) "node_modules")))
-         (public-html-p (f-exists? (concat pub-dir (f-path-separator) "index.html")))
-         (public-nodes-p (f-exists? (concat pub-dir (f-path-separator) "nodes.json")))
-         (public-edges-p (f-exists? (concat pub-dir (f-path-separator) "edges.json"))))
+  (let* ((inst-dir (org-roam-viz--get-install-dir))
+         (pub-dir (file-name-concat inst-dir "public"))
+         (node-modules-p (file-exists-p (file-name-concat inst-dir "node_modules")))
+         (public-html-p (file-exists-p  (file-name-concat pub-dir "index.html")))
+         (public-nodes-p (file-exists-p (file-name-concat pub-dir "nodes.json")))
+         (public-edges-p (file-exists-p (file-name-concat pub-dir "edges.json"))))
     (if (or (not public-html-p) (not node-modules-p))
         (user-error "org-roam-viz: Not initialised, need to run `org-roam-viz-init' at least once"))
-    (if (or (not public-nodes-p) (not public-edges-p))
-        (user-error "org-roam-viz: Graph not generated, run `org-roam-viz-regenerate'"))))
+    (if graphtoo
+        (if (or (not public-nodes-p) (not public-edges-p))
+            (user-error "org-roam-viz: Graph not generated, run `org-roam-viz-regenerate'")))))
+
 
 (defun org-roam-viz-start ()
   "Render the graph of nodes and edges."
