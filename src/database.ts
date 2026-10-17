@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import sexp from 'sexpression';
-import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 export interface NodeData {
   id: string;
@@ -91,6 +91,9 @@ if (!dbPath) {
   process.exit(1);
 }
 const info = SqliteProbe.probeDatabase(dbPath);
-writeFileSync('./public/nodes.json', JSON.stringify(info.nodes, null, 2), 'utf8');
-writeFileSync('./public/edges.json', JSON.stringify(info.edges, null, 2), 'utf8');
-console.log(`Wrote ${info.nodes.length} nodes to ./public/nodes.json, and ${info.edges.length} edges to ./public/edges.json`)
+const publish_folder = resolve('public');
+const file_nodes = resolve(publish_folder, 'nodes.json');
+const file_edges = resolve(publish_folder, 'edges.json');
+fs.writeFileSync(file_nodes, JSON.stringify(info.nodes, null, 2), 'utf8');
+fs.writeFileSync(file_edges, JSON.stringify(info.edges, null, 2), 'utf8');
+console.log(`Wrote ${info.nodes.length} nodes and ${info.edges.length} edges to ${publish_folder}`)

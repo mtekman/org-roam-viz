@@ -1,5 +1,4 @@
 import { Network, DataSet } from 'vis-network/standalone';
-import 'vis-network/styles/vis-network.css';
 
 import Json2Graph from './json2graph.ts';
 import TagLegend from './tag_legend.ts';
