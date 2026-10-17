@@ -116,27 +116,48 @@ Optional argument COMMANDLIST expands arguments to npm."
 (defun org-roam-viz-stop ()
   "Stop rendering."
   (interactive)
-  (org-roam-viz--npm-command-async-kill))
+  (org-roam-viz--npm-command-async-kill)
+  (message "org-roam-viz: visualization stopped"))
+
+(defun org-roam-viz--sanity-check ()
+  "Check that all files are populated, and that existing instances are terminated."
+  (let* ((pub-dir (concat org-roam-viz--install-dir (f-path-separator) "public"))
+         (node-modules-p (f-exists? (concat org-roam-viz--install-dir
+                                            (f-path-separator) "node_modules")))
+         (public-html-p (f-exists? (concat pub-dir (f-path-separator) "index.html")))
+         (public-nodes-p (f-exists? (concat pub-dir (f-path-separator) "nodes.json")))
+         (public-edges-p (f-exists? (concat pub-dir (f-path-separator) "edges.json"))))
+    (if (or (not public-html-p) (not node-modules-p))
+        (user-error "org-roam-viz: Not initialised, need to run `org-roam-viz-init' at least once"))
+    (if (or (not public-nodes-p) (not public-edges-p))
+        (user-error "org-roam-viz: Graph not generated, run `org-roam-viz-regenerate'"))))
 
 (defun org-roam-viz-start ()
   "Render the graph of nodes and edges."
   (interactive)
-  (org-roam-viz--npm-command-async
-   "run" "page-serve" "--" "-l" (format "%s" org-roam-viz-port))
-  (with-current-buffer org-roam-viz--buffer
-    (goto-char (buffer-end 1))
-    (let* ((network-host
-            (progn (re-search-backward
-                    (rx " - Network: " (+ space)
-                        (group "http://" (+ (not space)) ":" (+ num)) (+ space)))
-                   (match-string 1)))
-           (local-host
-            (progn (re-search-backward
-                    (rx " - Local: " (+ space)
-                        (group "http://" (+ (not space)) ":" (+ num)) (+ space)))
-                   (match-string 1))))
-      ;;(list local-host network-host)))
-      (message (concat "org-roam-viz: Now serving on `%s' and `%s'\n"
-                       "              Run `org-roam-viz-stop' to finish")
-               local-host network-host))))
+  (if org-roam-viz--serve-process
+      (message (concat "org-roam-viz: Already running on port %d\n"
+                       "              Remember to stop the server with `org-roam-viz-stop'")
+               org-roam-viz-port)
+    ;; Run:
+    (org-roam-viz--npm-command-async
+     "run" "page-serve" "--" "-l" (format "%s" org-roam-viz-port))
+    (with-current-buffer org-roam-viz--buffer
+      (goto-char (buffer-end 1))
+      (let* ((network-host
+              (progn (re-search-backward
+                      (rx " - Network: " (+ space)
+                          (group "http://" (+ (not space)) ":" (+ num)) (+ space)))
+                     (match-string 1)))
+             (local-host
+              (progn (re-search-backward
+                      (rx " - Local: " (+ space)
+                          (group "http://" (+ (not space)) ":" (+ num)) (+ space)))
+                     (match-string 1))))
+        (message (concat "org-roam-viz: Now serving on `%s' and `%s'\n"
+                         "              Run `org-roam-viz-stop' to finish")
+                 local-host network-host)))))
 
+(provide 'org-roam-viz)
+
+;;; org-roam-viz.el ends here
