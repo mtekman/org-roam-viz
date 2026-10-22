@@ -6,6 +6,14 @@ inspiration from the `org-roam-graph` graphviz rendering, but built interactivel
 
  ![](images/readme_1.webp)
 
+<details>
+<summary>Video Demo</summary>
+ 
+https://github.com/user-attachments/assets/991a5b74-b61b-4ce7-954e-1abfe3acde07
+
+</details>
+
+
 ### Web Summary
 
 A single node is a node in the org-roam database, and an edge is the
