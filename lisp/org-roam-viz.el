@@ -2,10 +2,10 @@
 
 ;; Copyright (C) 2026 Mehmet Tekman <mtekman89@gmail.com>
 
-;; Author: Mehmet Tekman
-;; URL: https://github.com/mtekman/org-roam-viz.el
+;; Author: Mehmet Tekman <mtekman89@gmail.com>
+;; URL: https://github.com/mtekman/org-roam-viz
 ;; Keywords: outlines
-;; Package-Requires: ((emacs "28.1"))
+;; Package-Requires: ((emacs "28.1") (org-roam "2.3.1"))
 ;; Version: 0.1
 
 ;;; License:
@@ -22,8 +22,8 @@
 
 ;;; Commentary:
 
-;;; Export nodes and edges from the org-roam sqlite database, and
-;;; render interactively.
+;; Export nodes and edges from the org-roam sqlite database, and
+;; render them interactively in an HTML page.
 
 ;;; Code:
 
@@ -37,7 +37,7 @@
   :group 'org-roam-viz
   :type 'integer)
 
-(defun org-roam-viz--get-install-dir()
+(defun org-roam-viz--get-install-dir ()
   "Get the installation directory.  Works with straight for now."
   (let* ((fname-elc (symbol-file 'org-roam-viz-port))
          (fname-el (string-replace ".elc" ".el" fname-elc))
@@ -48,7 +48,7 @@
 (defvar org-roam-viz--buffer "*org-roam-viz*"
   "Org-roam-viz message buffer.")
 (defvar org-roam-viz--serve-process nil
-  "Async webpage run process pointer.")
+  "Async webpage process.")
 
 ;; --- Node and NPM related functions
 (defun org-roam-viz-init ()
