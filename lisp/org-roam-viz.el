@@ -27,6 +27,8 @@
 
 ;;; Code:
 
+(require 'org-roam-db)
+
 (defcustom org-roam-viz-db-file org-roam-db-location
   "Location of the org-roam sqlite3 database."
   :group 'org-roam-viz
