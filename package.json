@@ -1,5 +1,5 @@
 {
-  "name": "my-vis-network-graph",
+  "name": "org-roam-viz",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
